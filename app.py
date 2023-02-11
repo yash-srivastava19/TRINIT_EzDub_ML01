@@ -1,8 +1,12 @@
-from dataclasses import dataclass
+import os
 from gtts import gTTS
 import gradio as gr
-from io import BytesIO
-import tempfile
+from translate import Translator
+import speech_recognition as sr
+
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+
+auth_token = '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'   # For accesing HugginFace Facebook Model. 
 
 class Languages:
     """ Languages currently supported by the application. """
@@ -31,56 +35,83 @@ class TLD:
     'Spanish (Mexico)':'com.mx','Spanish (Spain)':'es','Spanish (United States)':'us'}
 
 class TTSLayer():
-    """ Layer on top of gTTS """
+    """ Layer on top of gTTS - providing text to speech for """
+
     def __init__(self, text, tld, lang) -> None:
-        self.text = text   # The text that needs to be converted.
-        self.tld = tld     # used for accents and all.
-        self.lang = lang   # the language to which we need to generate the voice
+        """ [Constructor takes in text, the top-level domain and the language in which the text is : ] """
+        self.text = text
+        self.tld = tld    
+        self.lang = lang
     
     def tts(self):
+        """ [Converts the text to speech.] """
         tts = gTTS(text=self.text,tld= TLD.tld[self.tld], lang=Languages.lang[self.lang])
         tts.save('tts.mp3')
         with open('tts.mp3') as fp:
             return fp.name
 
-
-
-class RadioInterface:
-    def __init__(self, function, inputs, outputs) -> None:
-        # Necessary for interface
-        self._function = function,
-        self._inputs = inputs,
-        self.outputs = outputs,
-
-        # Necessary for descriptive content
-        self.title = 'title',
-        self.description = 'desc'
-        self.article = 'article'
-
-    pass
-
-
-# Populate the input with the dictionary keys 
 langs = Languages()
 top_level_domain = TLD()
 
-# Text, tld and language will be extracted from the input thing.
-# tts = TTSLayer()
+""" [Utiility Functions] """
 
+def T2TConversion(text, dest):
+    """ [(Utility Function) : Converts sentence from english to another language ] """
+    translator = Translator(to_lang=langs.lang[dest])
+    return translator.translate(text)
 
-def greet(Text,Language, Accent):
-    print(Text, Language, Accent)
+def convert_text(Text,Language, Accent):
+    """ [(Utility Function) : Performs Text-To-Speech provided language and accent.] """
     tts = TTSLayer(Text,Accent, Language)
     return tts.tts()
 
-# gr.TextArea()
 
-demo = gr.Interface(fn=greet, 
-        inputs=[
-            gr.TextArea(),
-            gr.Dropdown([key for key,_ in langs.lang.items()]), 
-            gr.Dropdown([key for key,_ in top_level_domain.tld.items()])], 
+class GRadioInterface:
+    """ [Class for managing UI for the application.] """
+    def __init__(self, function) -> None:
+        """ [Interface for packaging GRadio Application] """
         
-        outputs=gr.Audio())
+        # Necessary for interface
+        self._function = function
+        self._inputs = [
+                gr.TextArea(label = 'The Text to be Converted to Audio'),
+                gr.Dropdown([key for key,_ in langs.lang.items()], label='Languages Available',), 
+                gr.Dropdown([key for key,_ in top_level_domain.tld.items()])]
 
-demo.launch()
+        self.outputs = gr.Audio()
+
+        # Necessary for descriptive content
+        self.title = 'A Text-To-Speech Converter for Low Resource Languages'
+        self.description = 'Support over 50 languages !'
+        self.article = 'How does it work ? Just write a sentence (in target language) in the space provided and select the target language and accent and press submit. That is it. Wait and Enjoy.'
+    
+    def start(self):
+        """ [Launching the interface in a tabbed manner.] """
+
+        it_1 = gr.Interface(fn=self._function, inputs=self._inputs,outputs=self.outputs,
+            title = self.title,
+            description=  self.description,
+            article= self.article)
+            
+        it_2 =  gr.Interface(fn=T2TConversion, 
+            inputs = [ 
+                gr.Text(label='Write a sentence in English'),
+                gr.Dropdown([key for key,_ in langs.lang.items()])], 
+            outputs= gr.Text(label='The Converted Text'),
+            title = 'Translation from English',
+            description='Write a sentence in english and convert to other languages for speech synthesis',
+            article='What if you do not have a sentence in a particular language? Just write the sentence in english and let us do the magic.')
+
+        it_3 =  gr.Interface.load(
+                "huggingface/facebook/wav2vec2-base-960h",
+                title="Automatic Speech Recognition",
+                inputs=gr.Audio(),
+                description="What you cookin' ?",
+                api_key=auth_token
+        )
+
+        demo = gr.TabbedInterface([it_1, it_2, it_3],['Speech Synthesis', 'Sentence Translation', 'Automatic Speech Recognition'])
+        demo.launch()
+
+demo_app = GRadioInterface(function=convert_text)
+demo_app.start()
