@@ -8,13 +8,14 @@ speech technology due to a shortage of available speech data for training models
 Developing speech recognition models for these languages and dialects can play a
 crucial role in promoting sustainability in language technology and preserving linguistic
 diversity.
-Objective:
-● We propose to develop a generative model that can create synthetic speech
+
+#### Objective:
+- We propose to develop a generative model that can create synthetic speech
 samples for underrepresented languages and dialects.
-● The model should be able to generate speech samples in a variety of languages
+- The model should be able to generate speech samples in a variety of languages
 and dialects, with a focus on those that are underrepresented in existing speech
 datasets.
-● The generated samples can then be used to train and improve speech
+- The generated samples can then be used to train and improve speech
 recognition models for these languages and dialects, promoting linguistic
 diversity and reducing language barriers in speech technology.
 
